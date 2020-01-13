@@ -12,38 +12,27 @@ class GamesController < ApplicationController
 
   def score
     # binding.pry
-    @word = params[:word]
-    @letters = params[:letters]
+    @word = params[:word || ""].upcase
+    @letters = params[:letters].split
     @responseVal = ""
-    @score = 0
+    @included = buildable?(@word, @letters)
+    @english_word =  english_word?(@word)
+    @score = calc_score(@word, @letters, @english_word, @included)
     #check if @word is valid  w/three scenarios
     #cant be built
-    if !buildable(@word, @letters)
-      @responseVal = "Sorry but #{@word.upcase} can't be built out of #{@letters.split(' ').join(', ')}"
-      @score = 0
-    elsif !english(@word)
-      @responseVal = "Sorry but #{@word.upcase} does not seem to be a valid English word..."
-      @score = 0
-    else
-      @responseVal = "Contratulations! #{@word.upcase} is a valid English word!"
-      @score = calc_score(@word, @letters)
-    end
 
-    #built but not valid
-
-    #valid and builable
   end
 
-  def english(word)
+  def english_word?(word)
     response = open("https://wagon-dictionary.herokuapp.com/#{word}")
     json = JSON.parse(response.read)
     return json["found"]
   end
 
-def buildable(word, letters)
-  word_count =  Hash[word.upcase.split('').group_by{ |c| c }.map{ |k, v| [k, v.size] }]
+def buildable?(word, letters)
+  word_count =  Hash[word.split('').group_by{ |c| c }.map{ |k, v| [k, v.size] }]
   p letters
-  letter_count =  Hash[letters.split(' ').group_by{ |c| c }.map{ |k, v| [k, v.size] }]
+  letter_count =  Hash[letters.group_by{ |c| c }.map{ |k, v| [k, v.size] }]
   response = true
   word_count.each do |k, v|
     if (letter_count[k].nil? || v > letter_count[k])
@@ -54,10 +43,14 @@ def buildable(word, letters)
   return response
 end
 
-def calc_score(word, letters)
-  act_length = word.length
-  max_length = letters.split(' ').join('').length
-  return act_length**3 - max_length**2
+def calc_score(word, letters, english_word, includedVal)
+  if english_word && includedVal
+    act_length = word.length
+    max_length = letters.split(' ').join('').length
+    return act_length**3 - max_length**2
+  else
+    return 0
+  end
 end
 
 end
